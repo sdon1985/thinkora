@@ -50,6 +50,36 @@ body.review-open{overflow:hidden!important}
 #reviewItems .reviewQuestion.flashTarget{outline:2px solid #2563eb!important;outline-offset:1px!important}
 @media(max-width:700px){#reviewCard:not(.hidden){inset:7px!important;max-height:calc(100vh - 14px)!important}#reviewItems{height:calc(100vh - 145px)!important}}
 .hostedBy{color:#7b8797;text-decoration:none;font-weight:700}.hostedBy:hover{text-decoration:underline;color:#2563eb}.hostedBy:focus-visible{outline:2px solid #2563eb;outline-offset:3px;border-radius:4px}
+
+/* Production 4.1.4 — Parent Progress Analytics */
+.progressAnalytics{margin-top:12px}
+.progressHint{font-size:12px;color:var(--muted);margin-top:8px}
+.progressStatButton{appearance:none;border:1px solid var(--line);width:100%;font:inherit;color:inherit;cursor:pointer;transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease}
+.progressStatButton:hover{transform:translateY(-1px);box-shadow:0 5px 15px #10182812;border-color:#b8c5d8}
+.progressStatButton:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.progressDrill{margin-top:14px;border:1px solid var(--line);border-radius:16px;background:#fff;overflow:hidden;display:block;clear:both}
+.progressDrillHead{padding:13px 14px;background:#f8fafc;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.progressDrillHead b{font-size:16px}.progressDrillSub{font-size:12px;color:var(--muted);margin-top:3px}
+.progressDrillClose{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font-weight:800;cursor:pointer}
+.progressMetricGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px}
+.progressMetric{background:#f7f9fc;border-radius:10px;padding:9px;text-align:center}
+.progressMetric b{display:block;font-size:18px}
+.progressTable{width:100%;border-collapse:collapse}
+.progressTable th,.progressTable td{padding:10px;border-top:1px solid #edf0f4;text-align:left;font-size:13px}
+.progressTable th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);background:#fbfcfe}
+.progressTable td.num{text-align:center;font-weight:800}
+.progressBars{padding:4px 12px 14px}
+.progressBarRow{display:grid;grid-template-columns:125px 1fr 52px;gap:8px;align-items:center;margin-top:9px}
+.progressBarLabel{font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.progressBarTrack{height:16px;border-radius:999px;background:#edf1f5;overflow:hidden}
+.progressBarFill{height:100%}
+.progressBarCorrect{background:#86efac}.progressBarWrong{background:#fca5a5}.progressBarNA{background:#cbd5e1}
+.progressBarValue{text-align:right;font-weight:800;font-size:12px}
+.progressLegend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--muted)}
+.progressLegend span:before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.progressLegend .lgC:before{background:#86efac}.progressLegend .lgW:before{background:#fca5a5}.progressLegend .lgN:before{background:#cbd5e1}
+@media(max-width:700px){.progressMetricGrid{grid-template-columns:repeat(2,1fr)}.progressTable{min-width:650px}.progressDrill{overflow-x:auto}.progressBarRow{grid-template-columns:95px 1fr 45px}}
+
 </style>
 
 <script>
@@ -109,8 +139,73 @@ async function load(){
     const id=el.dataset.student;
     const [pr,wr]=await Promise.allSettled([KMT.parentProgress(id),KMT.parentWorksheets(id)]);
     if(pr.status==="fulfilled"){
-      const rs=pr.value||[], total=rs.reduce((n,r)=>n+Number(r.total||0),0), correct=rs.reduce((n,r)=>n+Number(r.correct||0),0), wrong=rs.reduce((n,r)=>n+Number(r.wrong||0),0), na=rs.reduce((n,r)=>n+Number(r.not_answered||0),0), acc=total?Math.round(correct*100/total):0;
-      el.querySelector(".progressBox").innerHTML='<div class="stats"><div class="stat"><b>'+rs.length+'</b>Approved Worksheets</div><div class="stat"><b>'+acc+'%</b>Accuracy</div><div class="stat"><b>'+correct+'</b>Correct</div><div class="stat"><b>'+wrong+'</b>Wrong</div><div class="stat"><b>'+na+'</b>Not Answered</div></div>';
+      const rs=Array.isArray(pr.value)?pr.value:[];
+      const approved=rs.filter(r=>!['voided','pending','under_review'].includes(String(r.status||'').toLowerCase()));
+      const total=approved.reduce((n,r)=>n+Number(r.total||0),0);
+      const correct=approved.reduce((n,r)=>n+Number(r.correct||0),0);
+      const wrong=approved.reduce((n,r)=>n+Number(r.wrong||0),0);
+      const na=approved.reduce((n,r)=>n+Number(r.not_answered||0),0);
+      const acc=(correct+wrong)>0?Math.round(correct*100/(correct+wrong)):0;
+
+      const byOp={};
+      approved.forEach(r=>{
+        const key=String(r.operation||'Worksheet').trim()||'Worksheet';
+        if(!byOp[key])byOp[key]={operation:key,worksheets:0,correct:0,wrong:0,na:0,total:0};
+        const d=byOp[key];
+        d.worksheets++;
+        d.correct+=Number(r.correct||0);
+        d.wrong+=Number(r.wrong||0);
+        d.na+=Number(r.not_answered||0);
+        d.total+=Number(r.total||0);
+      });
+      const ops=Object.values(byOp).sort((a,b)=>b.worksheets-a.worksheets||a.operation.localeCompare(b.operation));
+
+      el.querySelector(".progressBox").innerHTML=
+        '<div class="progressAnalytics"><div class="stats">'+
+        '<button type="button" class="stat progressStatButton" data-pmetric="worksheets"><b>'+approved.length+'</b>Approved Worksheets</button>'+
+        '<button type="button" class="stat progressStatButton" data-pmetric="accuracy"><b>'+acc+'%</b>Accuracy<br><small>Correct ÷ (Correct + Wrong)</small></button>'+
+        '<button type="button" class="stat progressStatButton" data-pmetric="correct"><b>'+correct+'</b>Correct</button>'+
+        '<button type="button" class="stat progressStatButton" data-pmetric="wrong"><b>'+wrong+'</b>Wrong</button>'+
+        '<button type="button" class="stat progressStatButton" data-pmetric="na"><b>'+na+'</b>Not Answered</button>'+
+        '</div><div class="progressHint">Click any metric for a practice-type breakdown. Not Answered is tracked separately and never affects Accuracy.</div>'+
+        '<div class="progressDrill" data-progress-drill style="display:none"></div></div>';
+
+      const drill=el.querySelector('[data-progress-drill]');
+      const renderDrill=(metric)=>{
+        if(!drill)return;
+        const labels={worksheets:'Worksheet breakdown',accuracy:'Accuracy breakdown — Not Answered excluded',correct:'Correct answers by practice type',wrong:'Wrong answers by practice type',na:'Not Answered by practice type'};
+        const title=labels[metric]||labels.worksheets;
+        const rows=ops.map(d=>({d,accuracy:(d.correct+d.wrong)>0?Math.round(d.correct*100/(d.correct+d.wrong)):0,value:metric==='worksheets'?d.worksheets:metric==='correct'?d.correct:metric==='wrong'?d.wrong:metric==='na'?d.na:(d.correct+d.wrong)}));
+
+        if(metric==='accuracy'){
+          const den=correct+wrong,cp=den?Math.round(correct*100/den):0,wp=den?100-cp:0;
+          drill.innerHTML='<div class="progressDrillHead"><div><b>'+title+'</b><div class="progressDrillSub">Correct '+correct+' vs Wrong '+wrong+' · '+na+' Not Answered excluded</div></div><button type="button" class="progressDrillClose" data-pclose>Close</button></div>'+
+          '<div class="progressMetricGrid"><div class="progressMetric"><b>'+correct+'</b>Correct</div><div class="progressMetric"><b>'+wrong+'</b>Wrong</div><div class="progressMetric"><b>'+na+'</b>Not Answered</div><div class="progressMetric"><b>'+acc+'%</b>Accuracy</div></div>'+
+          '<div class="progressBars"><div class="progressBarRow"><span class="progressBarLabel">Correct</span><div class="progressBarTrack"><div class="progressBarFill progressBarCorrect" style="width:'+cp+'%"></div></div><span class="progressBarValue">'+cp+'%</span></div>'+
+          '<div class="progressBarRow"><span class="progressBarLabel">Wrong</span><div class="progressBarTrack"><div class="progressBarFill progressBarWrong" style="width:'+wp+'%"></div></div><span class="progressBarValue">'+wp+'%</span></div>'+
+          '<div class="progressLegend"><span class="lgC">Correct</span><span class="lgW">Wrong</span><span class="lgN">Not Answered is excluded</span></div></div>';
+        }else if(!rows.length){
+          drill.innerHTML='<div class="progressDrillHead"><b>'+title+'</b><button type="button" class="progressDrillClose" data-pclose>Close</button></div><div class="empty">No approved practice data is available yet.</div>';
+        }else{
+          const max=Math.max(1,...rows.map(r=>r.value));
+          const fill=metric==='wrong'?'progressBarWrong':metric==='na'?'progressBarNA':'progressBarCorrect';
+          const label=metric==='worksheets'?'Worksheets':metric==='correct'?'Correct':metric==='wrong'?'Wrong':'Not Answered';
+          drill.innerHTML='<div class="progressDrillHead"><div><b>'+title+'</b><div class="progressDrillSub">Breakdown by practice type</div></div><button type="button" class="progressDrillClose" data-pclose>Close</button></div>'+
+          '<div style="overflow-x:auto"><table class="progressTable"><thead><tr><th>Practice Type</th><th>Worksheets</th><th>Correct</th><th>Wrong</th><th>Not Answered</th><th>Accuracy</th></tr></thead><tbody>'+
+          rows.map(r=>'<tr><td><b>'+esc(r.d.operation)+'</b></td><td class="num">'+r.d.worksheets+'</td><td class="num">'+r.d.correct+'</td><td class="num">'+r.d.wrong+'</td><td class="num">'+r.d.na+'</td><td class="num">'+r.accuracy+'%</td></tr>').join('')+
+          '</tbody></table></div><div class="progressBars">'+
+          rows.map(r=>'<div class="progressBarRow"><span class="progressBarLabel">'+esc(r.d.operation)+'</span><div class="progressBarTrack"><div class="progressBarFill '+fill+'" style="width:'+Math.round(r.value*100/max)+'%"></div></div><span class="progressBarValue">'+r.value+'</span></div>').join('')+
+          '<div class="progressLegend"><span class="'+(metric==='wrong'?'lgW':metric==='na'?'lgN':'lgC')+'">'+label+'</span></div></div>';
+        }
+        drill.style.display='block';
+        setTimeout(()=>drill.scrollIntoView({behavior:'smooth',block:'nearest'}),0);
+      };
+      el.querySelector(".progressBox").onclick=(e)=>{
+        const b=e.target.closest('[data-pmetric]');
+        if(b){e.preventDefault();renderDrill(b.getAttribute('data-pmetric'));return;}
+        const c=e.target.closest('[data-pclose]');
+        if(c){e.preventDefault();drill.style.display='none';}
+      };
     }else el.querySelector(".progressBox").innerHTML='<div class="error">Unable to load approved progress.</div>';
 
     if(wr.status==="fulfilled"){
