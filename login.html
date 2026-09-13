@@ -241,10 +241,11 @@ document.addEventListener('selectstart',function(e){
         return;
       }
       if(selected==="guest") {
-        sessionStorage.setItem("poorviCurrentUser","guest");
+        const u=await KMT.guestLogin();
+        sessionStorage.setItem("poorviCurrentUser",u.id);
         sessionStorage.setItem("poorviDisplayName","Guest");
         sessionStorage.setItem("poorviRole","guest");
-        sessionStorage.setItem("poorviAuthMode","guest");
+        sessionStorage.setItem("poorviAuthMode","supabase");
         location.replace("index.html");
         return;
       }

@@ -468,8 +468,34 @@
   }
 
   async function logout(){load();try{if(S.access)await fetch(cfg().supabaseUrl+'/auth/v1/logout',{method:'POST',headers:{apikey:cfg().supabaseAnonKey,Authorization:'Bearer '+S.access}})}catch(e){}S.access=S.refresh=S.user=null;sessionStorage.removeItem(key)}
-  async function me(){load();if(!S.access)return null;try{const p=await api('/rest/v1/kids_users?select=id,display_name,role&id=eq.'+encodeURIComponent(S.user?.id||''));return p[0]?{authId:S.user.authId,id:p[0].id,name:p[0].display_name,role:p[0].role}:null}catch(e){return null}}
-  async function submit(s){const u=await me();if(!u)throw Error('Cloud session expired. Please login again.');const row={id:s.id,user_id:u.id,user_name:u.name,submitted_at:s.submitted_at||new Date().toISOString(),operation:s.operation,range:s.range,total:s.total,elapsed:s.elapsed,status:'pending',submission:s};await api('/rest/v1/worksheets',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(row)});return true}
+  async function guestLogin(){
+    // Guests use Supabase Anonymous Auth: no email, password, or registration.
+    const c=cfg();
+    let d;
+    try{
+      d=await auth('signup',{});
+    }catch(e){
+      const raw=String(e?.message||e||'');
+      if(/anonymous|disabled|not enabled|signup/i.test(raw)) throw Error('Guest access is not enabled in Supabase. Enable Anonymous Sign-Ins under Authentication → Providers → Anonymous.');
+      throw Error('Guest access could not be started. Please try again.');
+    }
+    if(!d?.access_token||!d?.user?.id)throw Error('Guest session could not be created.');
+    S.access=d.access_token;S.refresh=d.refresh_token||null;S.user={authId:d.user.id,id:d.user.id,name:'Guest',role:'guest',email:null};save();
+    return S.user;
+  }
+  async function me(){
+    load();if(!S.access)return null;
+    if(S.user?.role==='guest') return {authId:S.user.id,id:S.user.id,name:'Guest',role:'guest',email:null};
+    try{const p=await api('/rest/v1/kids_users?select=id,display_name,role&id=eq.'+encodeURIComponent(S.user?.id||''));return p[0]?{authId:S.user.authId,id:p[0].id,name:p[0].display_name,role:p[0].role}:null}catch(e){return null}
+  }
+  async function submit(s){
+    const u=await me();if(!u)throw Error('Cloud session expired. Please login again.');
+    if(u.role==='guest'){
+      const payload=Object.assign({},s,{userId:u.id,userName:'Guest',audience:'guest',portal:'guest',user_type:'guest'});
+      return rpc('guest_submit_worksheet',{p_worksheet_id:String(s.id),p_submission:payload});
+    }
+    const row={id:s.id,user_id:u.id,user_name:u.name,submitted_at:s.submitted_at||new Date().toISOString(),operation:s.operation,range:s.range,total:s.total,elapsed:s.elapsed,status:'pending',submission:s};await api('/rest/v1/worksheets',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(row)});return true
+  }
   async function pending(){const rows=await allWorksheets();return rows.filter(r=>['pending','under_review'].includes(String(r.status||'').toLowerCase()))}
   async function voidWorksheet(id,reason){
     await api('/rest/v1/worksheets?id=eq.'+encodeURIComponent(id),{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'voided',void_reason:reason||'Voided by parent',voided_at:new Date().toISOString(),voided_by:S.user?.authId||null})});
@@ -577,5 +603,5 @@
 
   async function worksheets(uid){return api('/rest/v1/worksheets?select=*&user_id=eq.'+encodeURIComponent(uid)+'&order=submitted_at.desc')}
   async function allWorksheets(){return api('/rest/v1/worksheets?select=*&order=submitted_at.desc')}
-  window.KMT={studentLoginStatus,finishEmailConfirmation,finishParentEmailConfirmation,load,login,guestAdminLogin,loginWithEmail,registerStudent,registerParent,parentLogin,enrollStudent,parentStudents,parentProgress,parentWorksheets,parentReviewWorksheet,adminProgress,adminParentOverview,adminParentSubscribe,adminParentUnsubscribe,adminDeleteParent,deleteStudentAccount,logout,me,submit,pending,reviewed,progress,progressFromRows,worksheets,allWorksheets,voidWorksheet,syncStudentPin,api};
+  window.KMT={studentLoginStatus,finishEmailConfirmation,finishParentEmailConfirmation,load,login,guestLogin,guestAdminLogin,loginWithEmail,registerStudent,registerParent,parentLogin,enrollStudent,parentStudents,parentProgress,parentWorksheets,parentReviewWorksheet,adminProgress,adminParentOverview,adminParentSubscribe,adminParentUnsubscribe,adminDeleteParent,deleteStudentAccount,logout,me,submit,pending,reviewed,progress,progressFromRows,worksheets,allWorksheets,voidWorksheet,syncStudentPin,api};
 })();
