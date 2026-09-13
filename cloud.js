@@ -113,6 +113,25 @@
     if(!p[0])throw Error('Your email is confirmed, but the Student profile is not available. Please try again after the Production 4.1.1 database migration is installed.');
     S.user={authId:d.user.id,id:p[0].id,name:p[0].display_name,role:p[0].role,email:String(email)};save();if(S.user.role==='user')await syncStudentPin(pin);return S.user;
   }
+  async function guestAdminLogin(pin){
+    pin=String(pin||'');
+    if(!/^\d{4}$/.test(pin))throw Error('Guest Admin PIN must be 4 digits.');
+    const email='guest_admin@kidsmathtest.com';
+    let d;
+    try{
+      d=await auth('token?grant_type=password',{email,password:authPassword(pin)});
+    }catch(e){
+      if(/email not confirmed/i.test(String(e?.message||e||'')))throw Error('Please confirm the Guest Admin email address first.');
+      throw Error('Guest Admin PIN is incorrect, or the Guest Admin PIN has not been configured yet.');
+    }
+    const role=String(d.user?.user_metadata?.role||d.user?.app_metadata?.role||'').toLowerCase();
+    if(role!=='guest_admin'){
+      try{await fetch(cfg().supabaseUrl+'/auth/v1/logout',{method:'POST',headers:{apikey:cfg().supabaseAnonKey,Authorization:'Bearer '+d.access_token}})}catch(_){}
+      throw Error('Guest Admin account is not authorized.');
+    }
+    S.access=d.access_token;S.refresh=d.refresh_token;S.user=d.user;save();
+    return {authId:d.user.id,id:d.user.id,name:'Guest Admin',role:'guest_admin',email};
+  }
   async function loginWithEmail(email,pin){
     email=String(email||'').trim().toLowerCase();
     const status=await studentLoginStatus(email);
@@ -558,5 +577,5 @@
 
   async function worksheets(uid){return api('/rest/v1/worksheets?select=*&user_id=eq.'+encodeURIComponent(uid)+'&order=submitted_at.desc')}
   async function allWorksheets(){return api('/rest/v1/worksheets?select=*&order=submitted_at.desc')}
-  window.KMT={studentLoginStatus,finishEmailConfirmation,finishParentEmailConfirmation,load,login,loginWithEmail,registerStudent,registerParent,parentLogin,enrollStudent,parentStudents,parentProgress,parentWorksheets,parentReviewWorksheet,adminProgress,adminParentOverview,adminParentSubscribe,adminParentUnsubscribe,adminDeleteParent,deleteStudentAccount,logout,me,submit,pending,reviewed,progress,progressFromRows,worksheets,allWorksheets,voidWorksheet,syncStudentPin,api};
+  window.KMT={studentLoginStatus,finishEmailConfirmation,finishParentEmailConfirmation,load,login,guestAdminLogin,loginWithEmail,registerStudent,registerParent,parentLogin,enrollStudent,parentStudents,parentProgress,parentWorksheets,parentReviewWorksheet,adminProgress,adminParentOverview,adminParentSubscribe,adminParentUnsubscribe,adminDeleteParent,deleteStudentAccount,logout,me,submit,pending,reviewed,progress,progressFromRows,worksheets,allWorksheets,voidWorksheet,syncStudentPin,api};
 })();
