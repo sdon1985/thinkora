@@ -9,7 +9,7 @@
  --shadow:0 10px 35px rgba(16,24,40,.07);--radius:20px;
 }
 *{box-sizing:border-box}
-/* Production 4.1.1 — prevent accidental long-press/text selection on the learning UI. */
+/* Production 5.0.0 — prevent accidental long-press/text selection on the learning UI. */
 html,body,.page,button,.btn,.navtabs,.card,.eng-card,.phon-card,.stat,.question,.section-title,.muted,.eyebrow,.ruleNum,.phon-big,.phon-sounds,.phon-examples,.phon-teacher-note,.phon-summary,.english-rule,.footer,a {
   -webkit-user-select:none;
   user-select:none;
@@ -104,7 +104,7 @@ select,input{width:100%;padding:12px;border:1px solid #cdd6e2;border-radius:12px
 <script src="./app-config.js"></script><script src="./cloud.js?v=4.1.0"></script>
 
 <script>
-// Production 4.1.1 — stop accidental long-press text selection/copy on the UI.
+// Production 5.0.0 — stop accidental long-press text selection/copy on the UI.
 document.addEventListener('selectstart',function(e){
   if(!e.target.closest('input,textarea,select,[contenteditable="true"],[contenteditable=""]')) e.preventDefault();
 },true);
@@ -112,7 +112,7 @@ document.addEventListener('selectstart',function(e){
 </head><body>
 <div class="page">
 <header class="topbar">
-  <div><div class="eyebrow">KIDS MATH TEST • Production 4.1.1</div><div id="welcomeTitle">Welcome</div><div class="muted">Your private learning dashboard</div></div>
+  <div><div class="eyebrow">KIDS MATH TEST • Production 5.0.0</div><div id="welcomeTitle">Welcome</div><div class="muted">Your private learning dashboard</div></div>
   <div class="top-actions">
     <button class="btn secondary" id="switchUserBtn">⇄ Switch User</button>
     <a class="btn secondary" href="admin.html">👑 Admin</a>

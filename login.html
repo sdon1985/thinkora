@@ -9,7 +9,7 @@
 <style>
 :root{--ink:#142033;--muted:#667085;--line:#dfe5ee;--brand:#2563eb;--bg:#f3f7fc}
 *{box-sizing:border-box}
-/* Production 4.1.1 — prevent accidental long-press/text selection on the learning UI. */
+/* Production 5.0.0 — prevent accidental long-press/text selection on the learning UI. */
 html,body,.page,button,.btn,.navtabs,.card,.eng-card,.phon-card,.stat,.question,.section-title,.muted,.eyebrow,.ruleNum,.phon-big,.phon-sounds,.phon-examples,.phon-teacher-note,.phon-summary,.english-rule,.footer,a {
   -webkit-user-select:none;
   user-select:none;
@@ -44,7 +44,7 @@ body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;back
 </style>
 
 <script>
-// Production 4.1.1 — stop accidental long-press text selection/copy on the UI.
+// Production 5.0.0 — stop accidental long-press text selection/copy on the UI.
 document.addEventListener('selectstart',function(e){
   if(!e.target.closest('input,textarea,select,[contenteditable="true"],[contenteditable=""]')) e.preventDefault();
 },true);
@@ -307,5 +307,5 @@ document.addEventListener('selectstart',function(e){
   pin.focus();
 })();
 </script>
-</body>
+<div style="text-align:center;margin:10px 0"><a href="guest-admin.html">Guest Admin</a></div></body>
 </html>

@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Student Practice Sheets — Guest Admin</title>
+<script src="app-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#687386;--line:#e2e7ef;--brand:#315efb;--good:#16834a;--bad:#c43d3d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line);padding:18px 22px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+h1{font-size:20px;margin:0}.sub{color:var(--muted);font-size:12px;margin-top:4px}
+main{max-width:1200px;margin:22px auto;padding:0 16px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 6px 24px #1720330a}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.grow{flex:1}
+input{width:100%;padding:10px 11px;border:1px solid #ccd4e0;border-radius:9px;font:inherit}button{border:0;border-radius:9px;padding:10px 13px;font-weight:750;cursor:pointer}button.primary{background:var(--brand);color:#fff}button.secondary{background:#eef2f7;color:#26334a}button.good{background:#16834a;color:#fff}button.bad{background:#c43d3d;color:#fff}button:disabled{opacity:.55;cursor:not-allowed}
+.hidden{display:none!important}.error{color:var(--bad);font-weight:700}.ok{color:var(--good);font-weight:700}.muted{color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{background:#f7f9fc;border:1px solid var(--line);border-radius:12px;padding:13px}.stat b{display:block;font-size:22px}
+table{width:100%;border-collapse:collapse}th,td{padding:10px;border-top:1px solid #edf0f4;text-align:left;vertical-align:top}th{font-size:11px;text-transform:uppercase;color:var(--muted);background:#fbfcfe}
+.answerRow{display:grid;grid-template-columns:48px minmax(170px,1fr) 78px minmax(90px,110px) minmax(300px,1.4fr);gap:8px;align-items:center;padding:8px 0;border-top:1px solid #edf0f4}
+.answerRow img{max-width:100%;max-height:58px;object-fit:contain;border:1px solid var(--line);border-radius:7px;background:#fff}
+.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 8px;font-size:11px;font-weight:800}.pending{background:#fff7d6}.approved{background:#e8f7ee}.reviewed{background:#eaf0ff}
+.modal{position:fixed;inset:16px;background:#fff;border:1px solid var(--line);border-radius:18px;z-index:100;box-shadow:0 20px 60px #17203333;display:flex;flex-direction:column;overflow:hidden}
+.modalHead{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;align-items:center}.modalBody{overflow:auto;padding:12px 16px;flex:1}
+.footer{text-align:center;color:var(--muted);font-size:12px;padding:18px}.footer a{color:inherit;font-weight:700}
+@media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.answerRow{grid-template-columns:38px 1fr 62px;}.answerRow .studentBox,.answerRow .decision{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<header><div><h1>Guest Admin</h1><div class="sub">Student Practice Sheets • Guest review workspace</div></div>
+<div class="row"><button class="secondary" id="refresh">Refresh</button><button class="secondary" id="logout">Sign out</button></div></header>
+<main>
+<div id="authCard" class="card">
+  <h2>Guest Admin Login</h2>
+  <p class="muted">Use a dedicated Guest Admin Supabase account. Do not use the main Admin account here.</p>
+  <div class="row"><div class="grow"><input id="email" type="email" placeholder="Guest admin email"></div><div class="grow"><input id="password" type="password" placeholder="Password"></div><button class="primary" id="login">Sign in</button></div>
+  <div id="authMsg" class="error" style="margin-top:10px"></div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="grid">
+    <div class="stat"><b id="pendingCount">0</b>Pending review</div>
+    <div class="stat"><b id="approvedCount">0</b>Approved</div>
+    <div class="stat"><b id="reviewedCount">0</b>Reviewed</div>
+    <div class="stat"><b id="guestCount">0</b>Guest submissions</div>
+  </div>
+  <div class="card"><div class="row"><div class="grow"><h2 style="margin:0">Guest submissions</h2><div class="muted">Only Guest-tagged worksheets are shown here.</div></div><button class="secondary" id="load">Reload</button></div>
+    <div id="msg" style="margin:10px 0"></div>
+    <div style="overflow:auto"><table><thead><tr><th>Guest</th><th>Operation</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
+  </div>
+</div>
+</main>
+<div id="reviewModal" class="modal hidden">
+ <div class="modalHead"><div><b id="reviewTitle">Guest Review</b><div id="reviewSub" class="muted"></div></div><div class="row"><button class="secondary" id="closeReview">Close</button><button class="good" id="saveReview">Approve Review</button></div></div>
+ <div class="modalBody"><div id="reviewSummary" class="muted" style="margin-bottom:10px"></div><div id="reviewQuestions"></div></div>
+</div>
+<div class="footer">Hosted by <a href="https://www.linkedin.com/in/sdon1985/" target="_blank" rel="noopener">Sandeep Dondeti</a></div>
+
+<script>
+const {createClient}=window.supabase;
+const sb=createClient(window.APP_CONFIG.SUPABASE_URL,window.APP_CONFIG.SUPABASE_ANON_KEY);
+const $=id=>document.getElementById(id);
+let selected=null, allRows=[];
+
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function errText(e){return e?.message||e?.error_description||'Unable to complete request';}
+function isGuestRow(r){
+  const s=r.submission||{};
+  return String(r.user_id||'').toLowerCase()==='guest' ||
+         String(r.user_name||'').toLowerCase().includes('guest') ||
+         String(s.user_type||s.audience||s.portal||'').toLowerCase()==='guest';
+}
+async function session(){return (await sb.auth.getSession()).data.session;}
+async function requireGuestAdmin(){
+  const s=await session();
+  if(!s)return false;
+  // Dedicated role can be placed in Auth metadata as guest_admin.
+  const role=String(s.user.user_metadata?.role||s.user.app_metadata?.role||'').toLowerCase();
+  if(role!=='guest_admin'){
+    await sb.auth.signOut();
+    $('authMsg').textContent='This account is not authorized for Guest Admin.';
+    return false;
+  }
+  $('authCard').classList.add('hidden');$('app').classList.remove('hidden');return true;
+}
+async function load(){
+  $('msg').textContent='Loading…';
+  // The database API returns worksheets; filter to Guest-tagged rows in the browser.
+  // Authorization is enforced by the dedicated SQL function/policy migration.
+  const {data,error}=await sb.rpc('guest_admin_worksheets');
+  if(error){$('msg').innerHTML='<span class="error">'+esc(errText(error))+'</span>';return;}
+  allRows=Array.isArray(data)?data:[];
+  renderRows();
+}
+function renderRows(){
+  const counts={pending:0,approved:0,reviewed:0};
+  allRows.forEach(r=>{const st=String(r.status||'pending').toLowerCase();if(st in counts)counts[st]++;});
+  $('pendingCount').textContent=counts.pending;$('approvedCount').textContent=counts.approved;$('reviewedCount').textContent=counts.reviewed;$('guestCount').textContent=allRows.length;
+  $('rows').innerHTML=allRows.map(r=>{
+    const st=String(r.status||'pending').toLowerCase();
+    const label=st==='approved'?'Approved':st==='reviewed'?'Reviewed':st==='voided'?'Voided':'Pending';
+    return '<tr><td><b>'+esc(r.user_name||'Guest')+'</b><div class="muted">'+esc(r.user_id||'guest')+'</div></td><td>'+esc(r.operation||'Practice')+'</td><td>'+esc(r.submitted_at?new Date(r.submitted_at).toLocaleString():'')+'</td><td><span class="pill '+st+'">'+label+'</span></td><td><button class="primary" data-review="'+esc(r.id)+'">Review</button></td></tr>';
+  }).join('')||'<tr><td colspan="5" class="muted">No Guest submissions yet.</td></tr>';
+}
+function drawReview(){
+  const a=selected.submission?.answers||[];
+  const c=a.filter(x=>x.status==='correct').length,w=a.filter(x=>x.status==='wrong').length,n=a.filter(x=>x.status==='not_answered').length;
+  $('reviewTitle').textContent='Guest Review — '+(selected.user_name||'Guest');
+  $('reviewSub').textContent=(selected.operation||'Practice')+' • '+(selected.id||'');
+  $('reviewSummary').textContent='Correct '+c+' • Wrong '+w+' • Not Answered '+n;
+  $('reviewQuestions').innerHTML=a.map((x,i)=>{
+    const status=['correct','wrong','not_answered'].includes(x.status)?x.status:(x.filled?'correct':'not_answered');
+    const buttons='<div class="decision">'+
+      '<button class="'+(status==='correct'?'good':'secondary')+'" data-status="correct" data-i="'+i+'">✓ Correct</button> '+
+      '<button class="'+(status==='wrong'?'bad':'secondary')+'" data-status="wrong" data-i="'+i+'">✗ Wrong</button> '+
+      '<button class="'+(status==='not_answered'?'secondary':'secondary')+'" data-status="not_answered" data-i="'+i+'">— Not Answered</button></div>';
+    return '<div class="answerRow"><b>#'+(i+1)+'</b><div><b>'+esc(x.problem||'')+(x.problem?' =':'')+'</b></div><div><b>'+esc(x.ans||'')+'</b></div><div class="studentBox">'+(x.image?'<img src="'+x.image+'" alt="Guest handwriting">':'<span class="muted">No image</span>')+'</div>'+buttons+'</div>';
+  }).join('');
+}
+$('login').onclick=async()=>{
+  $('authMsg').textContent='Signing in…';
+  const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
+  if(error){$('authMsg').textContent=errText(error);return;}
+  await requireGuestAdmin();if(!$('app').classList.contains('hidden'))load();
+};
+$('logout').onclick=async()=>{await sb.auth.signOut();location.reload();};
+$('refresh').onclick=load;$('load').onclick=load;$('closeReview').onclick=()=>{$('reviewModal').classList.add('hidden');selected=null;};
+$('saveReview').onclick=async()=>{
+  if(!selected)return;
+  $('saveReview').disabled=true;
+  const {data,error}=await sb.rpc('guest_admin_review_worksheet',{p_worksheet_id:selected.id,p_answers:selected.submission?.answers||[]});
+  $('saveReview').disabled=false;
+  if(error){alert(errText(error));return;}
+  $('reviewModal').classList.add('hidden');selected=null;await load();
+};
+$('rows').onclick=e=>{
+  const b=e.target.closest('[data-review]');if(!b)return;
+  selected=allRows.find(r=>String(r.id)===String(b.dataset.review));if(!selected)return;
+  selected.submission=selected.submission||{};selected.submission.answers=Array.isArray(selected.submission.answers)?selected.submission.answers:[];
+  selected.submission.answers.forEach(x=>{if(!['correct','wrong','not_answered'].includes(x.status))x.status=x.filled?'correct':'not_answered';});
+  drawReview();$('reviewModal').classList.remove('hidden');
+};
+$('reviewQuestions').onclick=e=>{
+  const b=e.target.closest('[data-status]');if(!b||!selected)return;
+  const i=Number(b.dataset.i);selected.submission.answers[i].status=b.dataset.status;drawReview();
+};
+(async()=>{if(await requireGuestAdmin())load();})();
+</script>
+</body></html>
