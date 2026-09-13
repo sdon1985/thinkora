@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Student Practice Sheets — Login</title>
 <script src="./app-config.js"></script>
-<script src="./cloud.js?v=5.0.4"></script>
+<script src="./cloud.js?v=4.1.0-auth"></script>
 <style>
 :root{--ink:#142033;--muted:#667085;--line:#dfe5ee;--brand:#2563eb;--bg:#f3f7fc}
 *{box-sizing:border-box}
@@ -64,7 +64,6 @@ document.addEventListener('selectstart',function(e){
       <button class="user" data-id="mahiram"><span>👦</span>Mahiram</button>
       <button class="user" data-id="guest"><span>👤</span>Guest</button>
       <button class="user" data-id="admin"><span>👑</span>Admin</button>
-      <button class="user" data-id="guest_admin"><span>🛡️</span>Guest Admin</button>
     </div>
     <div class="pin">
       <input id="pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off">
@@ -231,24 +230,6 @@ document.addEventListener('selectstart',function(e){
     }
     go.disabled=true; go.textContent="Signing in…"; err.textContent="";
     try{
-      if(selected==="guest_admin") {
-        const u=await KMT.guestAdminLogin(pin.value);
-        sessionStorage.setItem("kmtGuestAdminPin",pin.value);
-        sessionStorage.setItem("poorviDisplayName","Guest Admin");
-        sessionStorage.setItem("poorviRole","guest_admin");
-        sessionStorage.setItem("poorviAuthMode","supabase");
-        location.replace("guest-admin.html");
-        return;
-      }
-      if(selected==="guest") {
-        const u=await KMT.guestLogin(pin.value);
-        sessionStorage.setItem("poorviCurrentUser",u.id);
-        sessionStorage.setItem("poorviDisplayName","Guest");
-        sessionStorage.setItem("poorviRole","guest");
-        sessionStorage.setItem("poorviAuthMode","supabase");
-        location.replace("index.html");
-        return;
-      }
       const u=await KMT.login(selected,pin.value);
       sessionStorage.setItem("poorviCurrentUser",u.id);
       sessionStorage.setItem("poorviDisplayName",u.name);
