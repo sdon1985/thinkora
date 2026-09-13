@@ -32,11 +32,10 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-top:1px soli
 <main>
 <div id="authCard" class="card">
   <h2>Guest Admin Login</h2>
-  <p class="muted">Use the main login page and select <b>Guest Admin</b> to enter the 4-digit PIN.</p>
-  <div class="row"><a class="primary" href="login.html" style="text-decoration:none;text-align:center">← Guest Admin Login</a></div>
-  <div id="authMsg" class="error" style="margin-top:10px"></div>
+  <p class="muted">Use the main login page and select <b>Guest Admin</b>, then enter the 4-digit PIN.</p>
+  <div id="authMsg" class="error"></div>
+  <p><a href="login.html">← Back to Login</a></p>
 </div>
-
 <div id="app" class="hidden">
   <div class="grid">
     <div class="stat"><b id="pendingCount">0</b>Pending review</div>
@@ -60,6 +59,21 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-top:1px soli
 const {createClient}=window.supabase;
 const sb=createClient(window.APP_CONFIG.SUPABASE_URL,window.APP_CONFIG.SUPABASE_ANON_KEY);
 const $=id=>document.getElementById(id);
+
+async function restoreKmtSession(){
+  try{
+    const raw=sessionStorage.getItem('kmtSupabaseSession');
+    if(!raw)return false;
+    const x=JSON.parse(raw);
+    if(!x?.access||!x?.refresh)return false;
+    const {error}=await sb.auth.setSession({access_token:x.access,refresh_token:x.refresh});
+    if(error)throw error;
+    return true;
+  }catch(e){
+    console.error('Guest Admin session restore failed:',e);
+    return false;
+  }
+}
 let selected=null, allRows=[];
 
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -117,12 +131,8 @@ function drawReview(){
     return '<div class="answerRow"><b>#'+(i+1)+'</b><div><b>'+esc(x.problem||'')+(x.problem?' =':'')+'</b></div><div><b>'+esc(x.ans||'')+'</b></div><div class="studentBox">'+(x.image?'<img src="'+x.image+'" alt="Guest handwriting">':'<span class="muted">No image</span>')+'</div>'+buttons+'</div>';
   }).join('');
 }
-$('login').onclick=async()=>{
-  $('authMsg').textContent='Signing in…';
-  const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
-  if(error){$('authMsg').textContent=errText(error);return;}
-  await requireGuestAdmin();if(!$('app').classList.contains('hidden'))load();
-};
+// Guest Admin authentication is performed on the main login page with the PIN.
+// This page restores that Supabase session instead of asking for email/password.
 $('logout').onclick=async()=>{await sb.auth.signOut();location.reload();};
 $('refresh').onclick=load;$('load').onclick=load;$('closeReview').onclick=()=>{$('reviewModal').classList.add('hidden');selected=null;};
 $('saveReview').onclick=async()=>{
@@ -143,7 +153,14 @@ $('rows').onclick=e=>{
 $('reviewQuestions').onclick=e=>{
   const b=e.target.closest('[data-status]');if(!b||!selected)return;
   const i=Number(b.dataset.i);selected.submission.answers[i].status=b.dataset.status;drawReview();
-});
-(async()=>{if(await requireGuestAdmin())load();})();
+};
+(async()=>{
+  const restored=await restoreKmtSession();
+  if(!restored){
+    $('authMsg').textContent='Guest Admin session not found. Return to the main login page and select Guest Admin.';
+    return;
+  }
+  if(await requireGuestAdmin())load();
+})();
 </script>
 </body></html>
