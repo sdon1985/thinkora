@@ -53,6 +53,17 @@
     {r:29,p:"Spell the word: /lit-ul/",a:"little",why:"Words are usually divided between double consonants."}
   ];
 
+  const SCHOOL_CURRICULUM=window.SCHOOL_CURRICULUM||{spellingLists:{},rules:[]};
+  let schoolSpellingList=Number(localStorage.getItem('schoolSpellingList')||0);
+  function schoolListForCurrentWeek(){const wm=SCHOOL_CURRICULUM.weekMap||[];const t=new Date().toISOString().slice(0,10);let w=wm[0];for(const x of wm){if(t>=x.start)w=x;else break;}return Number(w?.spelling_list||1);}
+  if(!schoolSpellingList) schoolSpellingList=schoolListForCurrentWeek();
+  function schoolWords(listNo){return Array.isArray(SCHOOL_CURRICULUM.spellingLists?.[listNo])?SCHOOL_CURRICULUM.spellingLists[listNo]:[];}
+  function schoolReviewWords(listNo){const out=[];for(let i=1;i<=10;i++){const p=listNo-i;if(p>0){const a=schoolWords(p);if(a.length)out.push(a[(i*3)%a.length]);}}return out;}
+  function schoolSpellingSet(){return [...schoolWords(schoolSpellingList),...schoolReviewWords(schoolSpellingList)];}
+  function schoolWordPrompt(word){return 'Spell this school-list word: '+word;}
+  function schoolWordWhy(word){const found=(SCHOOL_CURRICULUM.rules||[]).find(r=>word.toLowerCase().includes('qu')&&r[0]===1);return found?('School list word. '+found[1]+': '+found[2]):'Use the Spalding rule(s) practiced for this word in the supplied school spelling-rules list.';}
+  function schoolListControls(prefix){const nums=Object.keys(SCHOOL_CURRICULUM.spellingLists||{}).map(Number).sort((a,b)=>a-b);return '<div class="phon-range" style="margin-bottom:10px"><b>School Spelling List</b><div class="phon-range-buttons"><label>List <select id="'+prefix+'SchoolList">'+nums.map(n=>'<option value="'+n+'" '+(n===schoolSpellingList?'selected':'')+'>'+n+'</option>').join('')+'</select></label><span class="muted">30 new + 10 review words</span><button type="button" class="btn secondary" id="'+prefix+'SchoolApply">Apply</button></div><div class="muted" style="margin-top:6px">Words are limited to the supplied Valley Academy spelling lists.</div></div>';}
+  function bindSchoolList(prefix,rerender){const s=$(prefix+'SchoolList'),b=$(prefix+'SchoolApply');if(b)b.onclick=()=>{schoolSpellingList=Number(s?.value)||schoolSpellingList;localStorage.setItem('schoolSpellingList',String(schoolSpellingList));practiceIndex=0;dictIndex=0;testSubmission=null;rerender();};}
   const PHONOGRAMS=[
     [1,"a","ă, ā, ah","at • ape • all"],[2,"c","k, s","cat • cent"],[3,"d","d","dog"],[4,"f","f","fish"],[5,"g","g, j","go • gem"],[6,"o","ŏ, ō, oo","odd • open • moon"],[7,"s","s, z","sun • is"],[8,"qu","kw","quack"],[9,"b","b","bat"],[10,"e","ĕ, ē","egg • eagle"],[11,"h","h","hat"],[12,"i","ĭ, ī","it • ice"],[13,"j","j","jam"],[14,"k","k","kite"],[15,"l","l","leg"],[16,"m","m","man"],[17,"n","n","net"],[18,"p","p","pig"],[19,"r","r","red"],[20,"t","t","top"],[21,"u","ŭ, ū, oo","up • use • rule"],[22,"v","v","van"],[23,"w","w","win"],[24,"x","ks","box"],[25,"y","y, ĭ, ī","yes • gym • my"],[26,"z","z","zoo"],
     [27,"sh","sh","ship • fish"],[28,"ee","ē","see • green"],[29,"th","th, th","thin • this"],[30,"ow","ow, ō","cow • snow"],[31,"ou","ow, ō, oo, ŭ","out • soul • soup • country"],[32,"oo","oo, ŭ","moon • book"],[33,"ch","ch, k, sh","chip • school • machine"],[34,"ar","ar","car"],[35,"ay","ā — used at the end of a word","day • play"],[36,"ai","ā — not used at the end of a word","rain • train"],[37,"oy","oy — used at the end of a word","boy • enjoy"],[38,"oi","oi — not used at the end of a word","coin • point"],[39,"er","er — as in her","her • fern"],[40,"ir","er — as in first","first • bird"],[41,"ur","er — as in nurse","nurse • turn"],[42,"wor","er — as in works","work • world"],[43,"ear","er — as in early","early • learn"],[44,"ng","ng","sing • ring"],[45,"ea","ē, ĕ, ā","eat • head • great"],[46,"aw","aw — used at the end","saw • draw"],[47,"au","au — not used at the end","haul • August"],[48,"or","or","for • storm"],[49,"ck","k — after a single vowel","back • duck"],[50,"wh","wh","when • what"],[51,"ed","ĕd, d, t","handed • lived • jumped"],[52,"ew","oo, ū — used at the end","few • new"],[53,"ui","oo, ū — not used at the end","fruit • suit"],[54,"oa","ō","boat • road"],
@@ -223,26 +234,12 @@
       $('engChoices').querySelectorAll('button').forEach(b=>b.onclick=()=>{const good=Number(b.dataset.id)===item.id;$('engChoices').querySelectorAll('button').forEach(x=>x.disabled=true);state.practice++;if(good){state.correct++;b.classList.add('correct');}else{b.classList.add('wrong');state.review.push({phonogram:item.id,answer:p[1],at:Date.now()});}save();$('engFeedback').innerHTML='<div class="eng-feedback">'+(good?'✅ Correct!':'❌ Not quite. Review this sound again with the Parent/Admin reviewer.')+'</div>';});
       $('engNextPractice').onclick=()=>{practiceIndex++;pgSession.index++;if(pgSession.index>=pgSession.items.length){pgStart('practice',count);practiceIndex=0;}renderPractice();};return;
     }
-    const q=[
-      {r:1,q:'Which spelling is correct?',c:['qeen','queen','kwen'],a:'queen',why:'Rule 1: q is always followed by u.'},
-      {r:2,q:'Which word uses c to say /s/?',c:['cat','city','cup'],a:'city',why:'Rule 2: c before e, i, or y says /s/.'},
-      {r:3,q:'Which word has g saying /j/?',c:['gate','gym','gust'],a:'gym',why:'Rule 3: g before e, i, or y MAY say /j/.'},
-      {r:6,q:'Choose the correct spelling.',c:['happi','happy','happe'],a:'happy',why:'Rule 6: write y, not i, at the end of an English word.'},
-      {r:9,q:'What is the correct spelling?',c:['hoping','hopping','hoppinng'],a:'hopping',why:'Rule 9: double the consonant before -ing.'},
-      {r:10,q:'Choose the correct spelling.',c:['begining','beginning','beggining'],a:'beginning',why:'Rule 10: begin follows the 2-1-1 pattern.'},
-      {r:11,q:"Make 'make' + 'ing'.",c:['makeing','making','makking'],a:'making',why:'Rule 11: drop final silent e.'},
-      {r:12,q:'Which spelling is correct?',c:['receive','recieve','receeve'],a:'receive',why:'Rule 12: write ei after c.'},
-      {r:13,q:'Which word uses sh at the beginning?',c:['ship','sip','chip'],a:'ship',why:'Rule 13: sh can be used at the beginning.'},
-      {r:17,q:'Which spelling is correct?',c:['mis','miss','mizz'],a:'miss',why:'Rule 17: s is often doubled.'},
-      {r:18,q:'Which word ends with ay saying /ā/?',c:['day','die','dee'],a:'day',why:'Rule 18: ay says /ā/ at the end.'},
-      {r:20,q:'Which spelling follows Rule 20?',c:['boxs','boxes','boxses'],a:'boxes',why:'Rule 20: s never follows x.'},
-      {r:24,q:'What is the correct spelling of baby + es?',c:['babyes','babies','babys'],a:'babies',why:'Rule 24: change y to i before the ending, unless -ing.'},
-      {r:26,q:'Which is correctly capitalized?',c:['monday','Monday','MONDAY'],a:'Monday',why:'Rule 26: proper nouns are capitalized.'},
-      {r:28,q:'Which word has -ed saying /t/?',c:['jumped','lived','handed'],a:'jumped',why:'Rule 28: after an unvoiced consonant sound, -ed says /t/.'},
-      {r:29,q:'Which spelling follows the double-consonant rule?',c:['litle','little','littel'],a:'little',why:'Rule 29: words are usually divided between double consonants.'}
-    ][practiceIndex%16];
-    $('englishPractice').innerHTML='<div class="eng-card" style="margin-top:12px"><div class="ruleNum" style="color:var(--brand);font-weight:900">SPALDING RULE '+q.r+'</div><div class="eng-q">'+esc(q.q)+'</div><div id="engChoices">'+q.c.map((x,i)=>'<button class="eng-choice" data-i="'+i+'">'+esc(x)+'</button>').join('')+'</div><div id="engFeedback"></div></div>';
-    $('engChoices').querySelectorAll('button').forEach((b,i)=>b.onclick=()=>answerPractice(b,q,i));
+    const words=schoolSpellingSet();
+    const word=words[practiceIndex%Math.max(1,words.length)]||'school';
+    const choices=[word,...words.filter(x=>x!==word).sort(()=>Math.random()-.5).slice(0,2)];
+    $('englishPractice').innerHTML='<div class="eng-card">'+schoolListControls('practice')+'<div class="ruleNum">SCHOOL SPELLING PRACTICE — '+(practiceIndex+1)+' OF '+words.length+'</div><div class="eng-q">Choose the exact spelling from the supplied school list.</div><div id="engChoices">'+choices.sort(()=>Math.random()-.5).map((x,i)=>'<button class="eng-choice" data-i="'+i+'">'+esc(x)+'</button>').join('')+'</div><div id="engFeedback"></div></div>';
+    bindSchoolList('practice',renderPractice);
+    $('engChoices').querySelectorAll('button').forEach((b,i)=>b.onclick=()=>{const q={r:schoolSpellingList,q:'School spelling list '+schoolSpellingList,a:word,c:choices,why:schoolWordWhy(word)};answerPractice(b,q,i);});
   }
 
   function answerPractice(btn,q,i){
@@ -263,9 +260,9 @@
       $('dictCheck').onclick=()=>{const filled=!canvasBlank($('dictPad'));state.practice++;const answer={phonogram:item.id,expected:p[1],at:Date.now(),status:'pending_review'};if(filled)state.review.push(answer);save();$('dictFeedback').innerHTML='<div class="eng-feedback">'+(filled?'⏳ Writing captured. Parent/Admin review will determine whether the phonogram symbol is correct.':'⚠️ Please write the phonogram symbol first.')+'</div>';};
       $('dictNext').onclick=()=>{dictIndex++;pgSession.index++;if(pgSession.index>=pgSession.items.length){pgStart('dictation',Number(sessionStorage.getItem('kmtPhonDictCount')||10));dictIndex=0;}renderDictation();};return;
     }
-    const item=TEST_WORDS[dictIndex%TEST_WORDS.length];
-    $('englishDictation').innerHTML='<div class="eng-card"><div class="ruleNum">SPALDING RULE '+item.r+'</div><div class="eng-q">🔊 Listen, then spell the word.</div><button class="btn primary" id="speakDictation">🔊 Hear Word</button><div class="pencil-label">✏️ Pencil Writing</div><div class="eng-writing-wrap"><canvas id="dictPad" class="eng-pad" width="700" height="210"></canvas><div class="eng-pencil-tools"><button class="btn primary" id="dictWriteBtn">🖊️ Write</button><button class="btn secondary" id="dictEraseBtn">🧽 Erase</button><span id="dictModeText" class="muted">Write mode — Apple Pencil</span></div></div><input id="dictInput" class="eng-input" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="Or type the spelling here"><div id="dictFeedback"></div><button class="btn primary" id="dictCheck">Check</button> <button class="btn secondary" id="dictNext">Next</button></div>';
-    $('speakDictation').onclick=()=>speak(item.a);setupDictationPad();
+    const schoolSet=schoolSpellingSet(); const item={r:schoolSpellingList,a:schoolSet[dictIndex%Math.max(1,schoolSet.length)],p:schoolSet[dictIndex%Math.max(1,schoolSet.length)],why:'Use the supplied Spalding spelling rules for this school-list word.'};
+    $('englishDictation').innerHTML='<div class="eng-card">'+schoolListControls('dict')+'<div class="ruleNum">SCHOOL SPELLING LIST '+schoolSpellingList+'</div><div class="eng-q">🔊 Listen, then spell the word.</div><button class="btn primary" id="speakDictation">🔊 Hear Word</button><div class="pencil-label">✏️ Pencil Writing</div><div class="eng-writing-wrap"><canvas id="dictPad" class="eng-pad" width="700" height="210"></canvas><div class="eng-pencil-tools"><button class="btn primary" id="dictWriteBtn">🖊️ Write</button><button class="btn secondary" id="dictEraseBtn">🧽 Erase</button><span id="dictModeText" class="muted">Write mode — Apple Pencil</span></div></div><input id="dictInput" class="eng-input" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="Or type the spelling here"><div id="dictFeedback"></div><button class="btn primary" id="dictCheck">Check</button> <button class="btn secondary" id="dictNext">Next</button></div>';
+    bindSchoolList('dict',renderDictation); $('speakDictation').onclick=()=>speak(item.a);setupDictationPad();
     $('dictCheck').onclick=()=>{const v=$('dictInput').value.trim(),filled=v.length||!canvasBlank($('dictPad')),good=v.toLowerCase()===item.a.toLowerCase();if(filled)state.practice++;if(good)state.correct++;else if(filled)state.review.push({rule:item.r,answer:item.a,at:Date.now()});save();$('dictFeedback').innerHTML='<div class="eng-feedback">'+(good?'✅ Correct!':filled?'❌ Correct spelling: <b>'+esc(item.a)+'</b>':'⚠️ Write or type an answer first.')+'<br>'+esc(item.why)+'</div>';};$('dictNext').onclick=()=>{dictIndex++;renderDictation();};
   }
 
@@ -284,8 +281,8 @@
     const active=testStarted&&!testDone;
     if(engCategory==='phonograms'){ renderPhonogramTestStart(); return; }
     if(active){renderTestQuestion();return;}
-    $('englishTest').innerHTML='<div class="eng-card"><h3>📝 Spalding Test</h3><p>Submit the completed test for <b>Parent/Admin Review</b>. The reviewer determines Correct, Wrong, or Not Answered.</p><div class="eng-test-controls"><label>Answer Method <select id="engAnswerMode"><option value="pencil">✏️ Apple Pencil</option><option value="keyboard">⌨️ Keyboard</option></select></label><label>Timer <select id="engMinutes"><option value="4">4 minutes</option><option value="5">5 minutes</option></select></label></div><button class="btn primary" id="startEnglishTest">▶ Start Test</button>'+(hasSubmittedReview()?'<button class="btn secondary" id="englishParentReviewBtn">👨‍👩‍👧 Parent Review</button>':'')+'</div>';
-    $('startEnglishTest').onclick=startEnglishTest;
+    $('englishTest').innerHTML='<div class="eng-card">'+(engCategory==='phonograms'?'':schoolListControls('test'))+'<h3>📝 Spalding Test</h3><p>Submit the completed test for <b>Parent/Admin Review</b>. The reviewer determines Correct, Wrong, or Not Answered.</p><div class="eng-test-controls"><label>Answer Method <select id="engAnswerMode"><option value="pencil">✏️ Apple Pencil</option><option value="keyboard">⌨️ Keyboard</option></select></label><label>Timer <select id="engMinutes"><option value="4">4 minutes</option><option value="5">5 minutes</option></select></label></div><button class="btn primary" id="startEnglishTest">▶ Start Test</button>'+(hasSubmittedReview()?'<button class="btn secondary" id="englishParentReviewBtn">👨‍👩‍👧 Parent Review</button>':'')+'</div>';
+    if(engCategory!=='phonograms') bindSchoolList('test',renderTestStart); $('startEnglishTest').onclick=startEnglishTest;
     if($('englishParentReviewBtn'))$('englishParentReviewBtn').onclick=()=>openParentReview();
   }
   function renderPhonogramTestStart(){
@@ -299,7 +296,7 @@
   function pgMakeItemsForTest(){const count=Number(sessionStorage.getItem('kmtPhonTestCount')||10);pgStart('test',count);return pgSession.items.map(item=>{const p=PHONOGRAMS[item.id-1];return {r:item.id,p:'Listen to the sound. Write the phonogram symbol.',a:p[1],why:'Phonogram '+p[1],phonogram:p[1],phonogramId:item.id,variant:item.variant};});}
 
   function startEnglishTest(){
-    if(testStarted)return;testMode=$('engAnswerMode').value;testSet=(engCategory==='phonograms'?pgMakeItemsForTest():[...TEST_WORDS].sort(()=>Math.random()-.5).slice(0,10));testIndex=0;testScore=0;testDone=false;testStarted=true;testBegin=Date.now();testLeft=(+$('engMinutes').value||4)*60;testSubmission=null;renderTestQuestion();persistActive();startEnglishTimer();
+    if(testStarted)return;testMode=$('engAnswerMode').value;testSet=(engCategory==='phonograms'?pgMakeItemsForTest():schoolSpellingSet().sort(()=>Math.random()-.5).map((w)=>({r:schoolSpellingList,p:schoolWordPrompt(w),a:w,why:schoolWordWhy(w)})));testIndex=0;testScore=0;testDone=false;testStarted=true;testBegin=Date.now();testLeft=(+$('engMinutes').value||4)*60;testSubmission=null;renderTestQuestion();persistActive();startEnglishTimer();
   }
   function startEnglishTimer(){clearInterval(testTimer);testTimer=setInterval(()=>{testLeft=Math.max(0,Math.ceil(((testBegin+(+$('engMinutes')?.value||4)*60000)-Date.now())/1000));updateEnglishTimer();persistActive();if(testLeft<=0){clearInterval(testTimer);testTimer=null;submitEnglishTest(true);}},250);}
   function updateEnglishTimer(){const x=$('engTestTimer');if(x){x.textContent=Math.floor(testLeft/60)+':'+String(testLeft%60).padStart(2,'0');x.classList.toggle('warn',testLeft<=30);}}

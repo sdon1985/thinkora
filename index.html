@@ -99,6 +99,8 @@ select,input{width:100%;padding:12px;border:1px solid #cdd6e2;border-radius:12px
 .phon-example-bank{font-size:.95rem}
 
 .hostedBy{color:#7b8797;text-decoration:none;font-weight:700}.hostedBy:hover{text-decoration:underline;color:#2563eb}.hostedBy:focus-visible{outline:2px solid #2563eb;outline-offset:3px;border-radius:4px}
+
+.curriculum-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}.curriculum-card{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}.curriculum-card h3{margin:0 0 8px}.curriculum-pill{display:inline-block;padding:5px 9px;border-radius:999px;background:var(--soft);color:var(--brand);font-size:12px;font-weight:900;margin:3px}.curriculum-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-top:9px}.curriculum-word{padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:#fff}.curriculum-event{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #edf0f4}.curriculum-event:first-child{border-top:0}.curriculum-due{font-weight:900;color:var(--brand)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="./app-config.js"></script><script src="./cloud.js?v=4.1.0"></script>
@@ -123,7 +125,7 @@ document.addEventListener('selectstart',function(e){
  <button class="btn active" id="navPractice">📝 Practice</button>
  <button class="btn secondary" id="navResults">📊 Results</button>
  <button class="btn secondary" id="navProgress">📈 Progress</button>
- <button class="btn secondary" id="navEnglish">📚 English</button>
+ <button class="btn secondary" id="navEnglish">📚 English</button><button class="btn secondary" id="navCurriculum">🗓️ School Plan</button>
 </nav>
 
 <main id="app">
@@ -177,6 +179,16 @@ document.addEventListener('selectstart',function(e){
  <div id="yearlyTracker" class="hidden" style="margin-top:12px"><div id="yearSummary"></div><div id="yearDetails"></div></div>
 </section>
 
+<section class="card hidden" id="curriculumPanel">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><div class="section-title">🗓️ School Curriculum & Year Plan</div><div class="muted">Valley Academy • Grade 3 • 2026–2027</div></div><button class="btn secondary" id="curriculumTodayBtn">Today</button></div>
+<div id="curriculumSummary" style="margin-top:12px"></div>
+<div id="curriculumWeek" style="margin-top:12px"></div>
+<div id="curriculumCalendar" style="margin-top:12px"></div>
+<div id="curriculumSpelling" style="margin-top:12px"></div>
+<div id="curriculumPoems" style="margin-top:12px"></div>
+<div id="curriculumMath" style="margin-top:12px"></div>
+<div id="curriculumBooks" style="margin-top:12px"></div>
+</section>
 <section class="card hidden" id="englishPanel">
  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
   <div><div class="section-title">📚 English — Spalding</div><div class="muted">Phonograms • Spelling Rules • Practice • Dictation • Test</div></div>
@@ -213,6 +225,6 @@ document.addEventListener('selectstart',function(e){
 <div id="modal" class="overlay hidden"><div class="modal"><h2>🔒 Parent Access</h2><div class="muted">Enter parent PIN.</div><input id="pin" type="password" inputmode="numeric"><div class="actions" style="margin-top:10px"><button class="btn primary" id="unlock">Unlock</button><button class="btn secondary" id="cancel">Cancel</button></div></div></div>
 <div class="footer">Hosted by <a class="hostedBy" href="https://www.linkedin.com/in/sdon1985/" target="_blank" rel="noopener noreferrer">Sandeep Dondeti</a></div>
 
-<script src="./app-core.js"></script><script src="./english-spalding.js"></script><script src="./session-nav.js"></script><script src="./cloud-bootstrap.js"></script>
+<script src="./curriculum-data.js"></script><script src="./curriculum.js"></script><script src="./app-core.js"></script><script src="./english-spalding.js"></script><script src="./session-nav.js"></script><script src="./cloud-bootstrap.js"></script>
 
 </body></html>

@@ -121,13 +121,14 @@ showPractice();
 function showPractice(){
 setActive("navPractice");
 // Keep the existing worksheet controls visible; hide tracker/results cards.
-const ids=["progressTracker","result","parentReview","adminPastTests","englishPanel"];
+const ids=["progressTracker","result","parentReview","adminPastTests","englishPanel","curriculumPanel"];
 hideByIds(ids);
 }
 function showResults(){
 setActive("navResults");
 // Results card in the existing v25.4 User Clean - User Switch Fixed page.
 const result=el("result");
+const curriculum=el("curriculumPanel"); if(curriculum)curriculum.classList.add("hidden");
 if(result){result.classList.remove("hidden");result.scrollIntoView({behavior:"smooth"});}
 else alert("Results will appear after a test is submitted.");
 }
@@ -135,12 +136,13 @@ function showProgress(){
 setActive("navProgress");
 // Existing tracker section.
 const tracker=el("progressTracker");
+const curriculum=el("curriculumPanel"); if(curriculum)curriculum.classList.add("hidden");
 if(tracker){tracker.classList.remove("hidden");tracker.scrollIntoView({behavior:"smooth"});}
 }
 
 function showEnglish(){
   setActive("navEnglish");
-  const ids=["parentPanel","progressTracker","result","parentReview","adminPastTests","pencilTools","ocrStatus","worksheetStatusCard"];
+  const ids=["parentPanel","progressTracker","result","parentReview","adminPastTests","pencilTools","ocrStatus","worksheetStatusCard","curriculumPanel"];
   hideByIds(ids);
   const p=el("englishPanel");
   if(p){
