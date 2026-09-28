@@ -12,14 +12,28 @@ function make(o,ed){
 if(o==="mixed")o=["addition","subtraction","multiplication","division"][R(4)];
 let a,b,ans,range=$("addSubRange")?.value||"single";
 if(o==="addition"||o==="subtraction"){
-let hi=range==="single"?9:20;
-if(range==="mixed")hi=R(2)?9:20;
-a=randIn(0,hi); b=randIn(0,hi);
-if(ed==="regroup"&&o==="addition"){
-let tries=0;
-while(a+b<10 && tries++<20){a=randIn(0,hi);b=randIn(0,hi)}
+if(o==="subtraction"&&range==="sub2to1"){
+  a=randIn(10,99); b=randIn(0,9);
+  if(ed==="regroup"){
+    let tries=0;
+    while(a%10>=b && tries++<30){a=randIn(10,99);b=randIn(0,9)}
+  }
+}else if(o==="subtraction"&&range==="sub2to2"){
+  a=randIn(10,99); b=randIn(10,a);
+  if(ed==="regroup"){
+    let tries=0;
+    while(a%10>=b%10 && tries++<30){a=randIn(10,99);b=randIn(10,a)}
+  }
+}else{
+  let hi=range==="single"?9:20;
+  if(range==="mixed")hi=R(2)?9:20;
+  a=randIn(0,hi); b=randIn(0,hi);
+  if(ed==="regroup"&&o==="addition"){
+    let tries=0;
+    while(a+b<10 && tries++<20){a=randIn(0,hi);b=randIn(0,hi)}
+  }
+  if(o==="subtraction"&&b>a){[a,b]=[b,a]}
 }
-if(o==="subtraction"&&b>a){[a,b]=[b,a]}
 ans=o==="addition"?a+b:a-b;
 }else if(o==="multiplication"){
 const tables=selectedMDTables();
@@ -975,6 +989,12 @@ function updateRangeControls(){
 const o=$("op").value;
 const addSub=(o==="addition"||o==="subtraction");
 $("addSubRangeWrap").classList.toggle("hidden",!addSub);
+document.querySelectorAll("#addSubRange option[data-subtraction-only]").forEach(opt=>{
+  opt.hidden=o!=="subtraction";
+});
+if(o!=="subtraction" && ( $("addSubRange").value==="sub2to1" || $("addSubRange").value==="sub2to2" )){
+  $("addSubRange").value="two";
+}
 $("mdRangeWrap").classList.toggle("hidden",!(o==="multiplication"||o==="division"));
 const h=$("mdRangeHint");
 if(h){
